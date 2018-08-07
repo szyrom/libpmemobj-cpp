@@ -101,7 +101,7 @@ if(NOT PERL_FOUND)
 	message(FATAL_ERROR "Perl not found")
 endif()
 if (PERL_VERSION_STRING VERSION_LESS 5.16)
-	message(FATAL_ERROR "Too old Perl (<5.16)")
+	message(FATAL_ERROR "Perl version too old (<5.16)")
 endif()
 
 if(BUILD_TESTS OR BUILD_EXAMPLES)
@@ -243,6 +243,7 @@ endif()
 
 
 if(NOT MSVC_VERSION)
+	set(NO_MSVC_VOID_RETURN_PUBLISH TRUE)
 	set(SAVED_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
 
 	# Check for issues with older gcc compilers which do not expand variadic template
@@ -277,6 +278,18 @@ if(NOT MSVC_VERSION)
 else()
 	set(NO_GCC_VARIADIC_TEMPLATE_BUG TRUE)
 	set(NO_GCC_AGGREGATE_INITIALIZATION_BUG TRUE)
+
+	# Return type of pmemobj_publish() varies in different PMDK versions.
+	# MSVC does not compile code return void version of pmemobj_publish().
+	set(CMAKE_REQUIRED_FLAGS "--std=c++11 -Wno-error -c")
+	CHECK_CXX_SOURCE_COMPILES(
+		"#include \"libpmemobj/action.h\"
+		int main() {
+			int ret = pmemobj_publish(nullptr, nullptr, 0);
+			return 0;
+		}"
+		NO_MSVC_VOID_RETURN_PUBLISH)
+	set(CMAKE_REQUIRED_FLAGS ${SAVED_CMAKE_REQUIRED_FLAGS})
 endif()
 
 include_directories(include)
