@@ -109,14 +109,25 @@ function(execute name)
         set(ENV{PMEM_IS_PMEM_FORCE} 1)
     endif()
 
+    get_filename_component(MATCH_FILE "${ARGN}/.." ABSOLUTE)
+    get_filename_component(MATCH_FILE "${MATCH_FILE}" NAME)
+    set(MATCH_FILE "${MATCH_FILE}.match")
+
+    if(EXISTS "${SRC_DIR}/${MATCH_FILE}")
+        valgrind_ignore_warnings(${SRC_DIR}/${MATCH_FILE})
+        set(VALGRIND_EXIT_CODE 0)
+    else()
+        set(VALGRIND_EXIT_CODE 99)
+    endif()
+
     if(${TRACER} STREQUAL pmemcheck)
         if(TESTS_USE_FORCED_PMEM)
             # pmemcheck runs really slow with pmem, disable it
             set(ENV{PMEM_IS_PMEM_FORCE} 0)
         endif()
-        set(TRACE valgrind --error-exitcode=99 --tool=pmemcheck)
+        set(TRACE valgrind --error-exitcode=${VALGRIND_EXIT_CODE} --tool=pmemcheck)
     elseif(${TRACER} STREQUAL memcheck)
-        set(TRACE valgrind --error-exitcode=99 --tool=memcheck --leak-check=full
+        set(TRACE valgrind --error-exitcode=${VALGRIND_EXIT_CODE} --tool=memcheck --leak-check=full
 	    --suppressions=${SRC_DIR}/../ld.supp --suppressions=${SRC_DIR}/../memcheck-stdcpp.supp)
     elseif(${TRACER} STREQUAL helgrind)
         set(TRACE valgrind --error-exitcode=99 --tool=helgrind)
@@ -151,8 +162,8 @@ function(execute name)
         message(FATAL_ERROR "Test ${name} failed: ${HAD_ERROR}")
     endif()
 
-    if(EXISTS ${SRC_DIR}/${TRACER}.err.match)
-        match(${BIN_DIR}/${TRACER}.err ${SRC_DIR}/${TRACER}.err.match)
+    if(EXISTS ${SRC_DIR}/${MATCH_FILE})
+        match(${BIN_DIR}/${TRACER}.err ${SRC_DIR}/${MATCH_FILE})
     endif()
 
     if ($ENV{DUMP_STDOUT})
@@ -163,4 +174,19 @@ function(execute name)
         file(READ ${BIN_DIR}/${TRACER}.err ERR)
         message(STATUS "Stderr:\n${ERR}")
     endif()
+endfunction()
+
+function(valgrind_ignore_warnings name)
+    execute_process(COMMAND "cat ${name} | grep -v \
+            -e \"WARNING: Serious error when reading debug info\" \
+            -e \"When reading debug info from \" \
+            -e \"Ignoring non-Dwarf2/3/4 block in .debug_info\" \
+            -e \"Last block truncated in .debug_info; ignoring\" \
+            -e \"parse_CU_Header: is neither DWARF2 nor DWARF3 nor DWARF4\" \
+            -e \"brk segment overflow\" \
+            -e \"see section Limitations in user manual\" \
+            -e \"Warning: set address range perms: large range\"\
+            -e \"further instances of this message will not be shown\"\
+            >  ${name}.tmp
+            mv ${name}.tmp ${name}")
 endfunction()
