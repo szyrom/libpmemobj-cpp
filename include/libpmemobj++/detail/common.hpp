@@ -62,7 +62,7 @@ class persistent_ptr;
 namespace detail
 {
 
-/*
+/**
  * Conditionally add 'count' objects to a transaction.
  *
  * Adds count objects starting from `that` to the transaction if '*that' is
@@ -91,7 +91,7 @@ conditional_add_to_tx(const T *that, std::size_t count = 1)
 					" transaction.");
 }
 
-/*
+/**
  * Return type number for given type.
  */
 template <typename T>

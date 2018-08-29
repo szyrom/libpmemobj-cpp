@@ -6,151 +6,96 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+//
+// Copyright 2018, Intel Corporation
+//
+// Modified to test pmem::obj containers
+//
 
-// <vector>
-
-// template <class InputIter> vector(InputIter first, InputIter last);
-
-#include <vector>
-#include <cassert>
-#include <cstddef>
-
-#include "test_macros.h"
 #include "test_iterators.h"
-#include "test_allocator.h"
-#include "min_allocator.h"
-#include "asan_testing.h"
-#if TEST_STD_VER >= 11
-#include "emplace_constructible.h"
-#include "container_test_types.h"
-#endif
+#include "test_macros.h"
+#include "unittest.hpp"
 
-template <class C, class Iterator>
-void test(Iterator first, Iterator last) {
-  C c(first, last);
-  LIBCPP_ASSERT(c.__invariants());
-  assert(c.size() == static_cast<std::size_t>(std::distance(first, last)));
-  LIBCPP_ASSERT(is_contiguous_container_asan_correct(c));
-  for (typename C::const_iterator i = c.cbegin(), e = c.cend(); i != e;
-       ++i, ++first)
-    assert(*i == *first);
+#include <cstring>
+#include <vector>
+
+#include <libpmemobj++/experimental/vector.hpp>
+#include <libpmemobj++/make_persistent.hpp>
+#include <libpmemobj++/pool.hpp>
+#include <libpmemobj++/transaction.hpp>
+
+namespace nvobj = pmem::obj;
+namespace pmem_exp = nvobj::experimental;
+
+using vector_type = pmem_exp::vector<int>;
+
+struct root {
+	nvobj::persistent_ptr<vector_type> vector_pptr;
+};
+
+template <typename Iterator>
+void
+test_case(nvobj::pool<struct root> &pop, Iterator first, Iterator last)
+{
+	auto r = pop.root();
+
+	try {
+		nvobj::transaction::run(pop, [&] {
+			r->vector_pptr = nvobj::make_persistent<vector_type>(
+				first, last);
+		});
+		std::ptrdiff_t a =
+			static_cast<std::ptrdiff_t>(r->vector_pptr->size());
+		std::ptrdiff_t b = std::distance(first, last);
+		UT_ASSERT(a == b);
+		UT_ASSERT(static_cast<std::ptrdiff_t>(r->vector_pptr->size()) ==
+			  std::distance(first, last));
+
+		for (vector_type::const_iterator i = r->vector_pptr->cbegin(),
+						 e = r->vector_pptr->cend();
+		     i != e; ++i, ++first)
+			UT_ASSERT(*i == *first);
+
+	} catch (std::exception &e) {
+		std::cerr << e.what() << std::endl
+			  << std::strerror(nvobj::transaction::error())
+			  << std::endl;
+		UT_ASSERT(0);
+	}
 }
 
-static void basic_test_cases() {
-  int a[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 1, 0};
-  int* an = a + sizeof(a) / sizeof(a[0]);
-  test<std::vector<int> >(input_iterator<const int*>(a),
-                          input_iterator<const int*>(an));
-  test<std::vector<int> >(forward_iterator<const int*>(a),
-                          forward_iterator<const int*>(an));
-  test<std::vector<int> >(bidirectional_iterator<const int*>(a),
-                          bidirectional_iterator<const int*>(an));
-  test<std::vector<int> >(random_access_iterator<const int*>(a),
-                          random_access_iterator<const int*>(an));
-  test<std::vector<int> >(a, an);
-
-  test<std::vector<int, limited_allocator<int, 63> > >(
-      input_iterator<const int*>(a), input_iterator<const int*>(an));
-  // Add 1 for implementations that dynamically allocate a container proxy.
-  test<std::vector<int, limited_allocator<int, 18 + 1> > >(
-      forward_iterator<const int*>(a), forward_iterator<const int*>(an));
-  test<std::vector<int, limited_allocator<int, 18 + 1> > >(
-      bidirectional_iterator<const int*>(a),
-      bidirectional_iterator<const int*>(an));
-  test<std::vector<int, limited_allocator<int, 18 + 1> > >(
-      random_access_iterator<const int*>(a),
-      random_access_iterator<const int*>(an));
-  test<std::vector<int, limited_allocator<int, 18 + 1> > >(a, an);
-#if TEST_STD_VER >= 11
-  test<std::vector<int, min_allocator<int> > >(input_iterator<const int*>(a),
-                                               input_iterator<const int*>(an));
-  test<std::vector<int, min_allocator<int> > >(
-      forward_iterator<const int*>(a), forward_iterator<const int*>(an));
-  test<std::vector<int, min_allocator<int> > >(
-      bidirectional_iterator<const int*>(a),
-      bidirectional_iterator<const int*>(an));
-  test<std::vector<int, min_allocator<int> > >(
-      random_access_iterator<const int*>(a),
-      random_access_iterator<const int*>(an));
-  test<std::vector<int> >(a, an);
-#endif
+void
+basic_test_cases(nvobj::pool<struct root> &pop)
+{
+	int a[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 1, 0};
+	int *an = a + sizeof(a) / sizeof(a[0]);
+	test_case(pop, input_iterator<const int *>(a),
+		  input_iterator<const int *>(an));
+	test_case(pop, forward_iterator<const int *>(a),
+		  forward_iterator<const int *>(an));
+	test_case(pop, bidirectional_iterator<const int *>(a),
+		  bidirectional_iterator<const int *>(an));
+	test_case(pop, random_access_iterator<const int *>(a),
+		  random_access_iterator<const int *>(an));
+	test_case(pop, a, an);
 }
 
-void emplaceable_concept_tests() {
-#if TEST_STD_VER >= 11
-  int arr1[] = {42};
-  int arr2[] = {1, 101, 42};
-  {
-    using T = EmplaceConstructible<int>;
-    using It = forward_iterator<int*>;
-    {
-      std::vector<T> v(It(arr1), It(std::end(arr1)));
-      assert(v[0].value == 42);
-    }
-    {
-      std::vector<T> v(It(arr2), It(std::end(arr2)));
-      assert(v[0].value == 1);
-      assert(v[1].value == 101);
-      assert(v[2].value == 42);
-    }
-  }
-  {
-    using T = EmplaceConstructibleAndMoveInsertable<int>;
-    using It = input_iterator<int*>;
-    {
-      std::vector<T> v(It(arr1), It(std::end(arr1)));
-      assert(v[0].copied == 0);
-      assert(v[0].value == 42);
-    }
-    {
-      std::vector<T> v(It(arr2), It(std::end(arr2)));
-      //assert(v[0].copied == 0);
-      assert(v[0].value == 1);
-      //assert(v[1].copied == 0);
-      assert(v[1].value == 101);
-      assert(v[2].copied == 0);
-      assert(v[2].value == 42);
-    }
-  }
-#endif
-}
+int
+main(int argc, char *argv[])
+{
+	START();
 
-void test_ctor_under_alloc() {
-#if TEST_STD_VER >= 11
-  int arr1[] = {42};
-  int arr2[] = {1, 101, 42};
-  {
-    using C = TCT::vector<>;
-    using T = typename C::value_type;
-    using It = forward_iterator<int*>;
-    {
-      ExpectConstructGuard<int&> G(1);
-      C v(It(arr1), It(std::end(arr1)));
-    }
-    {
-      ExpectConstructGuard<int&> G(3);
-      C v(It(arr2), It(std::end(arr2)));
-    }
-  }
-  {
-    using C = TCT::vector<>;
-    using T = typename C::value_type;
-    using It = input_iterator<int*>;
-    {
-      ExpectConstructGuard<int&> G(1);
-      C v(It(arr1), It(std::end(arr1)));
-    }
-    {
-      //ExpectConstructGuard<int&> G(3);
-      //C v(It(arr2), It(std::end(arr2)), a);
-    }
-  }
-#endif
-}
+	if (argc < 2) {
+		std::cerr << "usage: " << argv[0] << " file-name" << std::endl;
+		return 1;
+	}
 
+	auto path = argv[1];
 
-int main() {
-  basic_test_cases();
-  emplaceable_concept_tests(); // See PR34898
-  test_ctor_under_alloc();
+	auto pop = nvobj::pool<root>::create(
+		path, "VectorTest", PMEMOBJ_MIN_POOL * 10, S_IWUSR | S_IRUSR);
+
+	basic_test_cases(pop);
+
+	pop.close();
 }

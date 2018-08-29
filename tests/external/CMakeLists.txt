@@ -142,3 +142,18 @@ build_test(array_get libcxx/array/array.tuple/get.pass.cpp)
 add_test_default(array_get none)
 
 add_test_expect_failure(array_get libcxx/array/array.tuple/get.fail.cpp)
+
+build_test(vector_construct_default libcxx/vector/vector.cons/construct_default.pass.cpp)
+add_test_default(vector_construct_default none)
+add_test_default(vector_construct_default pmemcheck)
+add_test_default(vector_construct_default memcheck)
+
+build_test(vector_construct_size_value libcxx/vector/vector.cons/construct_size_value.pass.cpp)
+add_test_default(vector_construct_size_value none)
+add_test_default(vector_construct_size_value pmemcheck)
+add_test_default(vector_construct_size_value memcheck)
+
+build_test(vector_construct_iter_iter libcxx/vector/vector.cons/construct_iter_iter.pass.cpp)
+add_test_default(vector_construct_iter_iter none)
+add_test_default(vector_construct_iter_iter pmemcheck)
+add_test_default(vector_construct_iter_iter memcheck)
