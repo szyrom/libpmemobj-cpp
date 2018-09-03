@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018, Intel Corporation
+ * Copyright 2018, Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,86 +30,31 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * @file
- * Commonly used functionality.
- */
-
-#ifndef PMEMOBJ_COMMON_HPP
-#define PMEMOBJ_COMMON_HPP
-
-#include "libpmemobj++/detail/pexceptions.hpp"
-#include "libpmemobj/tx_base.h"
-#include <typeinfo>
-
-namespace pmem
-{
-
-namespace obj
-{
-template <typename T>
-class persistent_ptr;
-}
-
-namespace detail
-{
-
 /*
- * Conditionally add 'count' objects to a transaction.
- *
- * Adds count objects starting from `that` to the transaction if '*that' is
- * within a pmemobj pool and there is an active transaction.
- * Does nothing otherwise.
- *
- * @param[in] that pointer to the first object being added to the transaction.
- * @param[in] count number of elements to be added to the transaction.
+ * detail_common.cpp -- detail/common.hpp functions tests
  */
-template <typename T>
-inline void
-conditional_add_to_tx(const T *that, std::size_t count = 1)
+#include "unittest.hpp"
+
+#include <iostream>
+#include <libpmemobj++/detail/common.hpp>
+
+void
+test_next_pow_2()
 {
-	if (count == 0)
-		return;
-
-	if (pmemobj_tx_stage() != TX_STAGE_WORK)
-		return;
-
-	/* 'that' is not in any open pool */
-	if (!pmemobj_pool_by_ptr(that))
-		return;
-
-	if (pmemobj_tx_add_range_direct(that, sizeof(*that) * count))
-		throw transaction_error("Could not add object(s) to the"
-					" transaction.");
+	std::cerr << 1L << 33 << std::endl;
+	std::cerr << pmem::detail::next_pow_2(1L << 32) << std::endl;
+	std::cerr << 1L << 33 << std::endl;
+	std::cerr << pmem::detail::next_pow_2((1L << 32) + 1) << std::endl;
+	UT_ASSERT(1 == pmem::detail::next_pow_2(0));
+	UT_ASSERT(2 == pmem::detail::next_pow_2(1));
+	UT_ASSERT(1L << 33 == pmem::detail::next_pow_2(1L << 32));
+	UT_ASSERT(1L << 33 == pmem::detail::next_pow_2((1L << 32) + 1));
 }
 
-/*
- * Return type number for given type.
- */
-template <typename T>
-uint64_t
-type_num()
+int
+main()
 {
-	return typeid(T).hash_code();
+	START();
+
+	test_next_pow_2();
 }
-
-/**
- * Round up to the next lowest power of 2.
- */
-inline uint64_t
-next_pow_2(uint64_t v)
-{
-	v |= v >> 1;
-	v |= v >> 2;
-	v |= v >> 4;
-	v |= v >> 8;
-	v |= v >> 16;
-	v |= v >> 32;
-	return ++v;
-}
-
-} /* namespace detail */
-
-} /* namespace pmem */
-
-#endif /* PMEMOBJ_COMMON_HPP */
