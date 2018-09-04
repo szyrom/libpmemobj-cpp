@@ -112,6 +112,17 @@ function(execute_common output_file name)
         set(ENV{PMEM_IS_PMEM_FORCE} 1)
     endif()
 
+    get_filename_component(SRC_DIR_PARENT ${SRC_DIR} DIRECTORY)
+    get_filename_component(SRC_DIR_PARENT_NAME ${SRC_DIR_PARENT} NAME)
+
+    if(SRC_DIR_PARENT_NAME STREQUAL tests)
+        set(SUPP_DIR ${SRC_DIR}/..)
+    elseif(SRC_DIR_PARENT_NAME STREQUAL external)
+        set(SUPP_DIR ${SRC_DIR_PARENT}/..)
+    else()
+        message(FATAL_ERROR "Unable to find directory with *.supp files.")
+    endif()
+
     if(${TRACER} STREQUAL pmemcheck)
         if(TESTS_USE_FORCED_PMEM)
             # pmemcheck runs really slow with pmem, disable it
@@ -120,7 +131,7 @@ function(execute_common output_file name)
         set(TRACE valgrind --error-exitcode=99 --tool=pmemcheck)
     elseif(${TRACER} STREQUAL memcheck)
         set(TRACE valgrind --error-exitcode=99 --tool=memcheck --leak-check=full
-           --suppressions=${SRC_DIR}/../ld.supp --suppressions=${SRC_DIR}/../memcheck-stdcpp.supp --suppressions=${SRC_DIR}/../memcheck-libunwind.supp)
+           --suppressions=${SUPP_DIR}/ld.supp --suppressions=${SUPP_DIR}/memcheck-stdcpp.supp --suppressions=${SUPP_DIR}/memcheck-libunwind.supp)
     elseif(${TRACER} STREQUAL helgrind)
         set(TRACE valgrind --error-exitcode=99 --tool=helgrind)
     elseif(${TRACER} STREQUAL drd)
