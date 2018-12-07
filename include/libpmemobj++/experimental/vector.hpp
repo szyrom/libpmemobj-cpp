@@ -99,18 +99,22 @@ public:
 	vector(std::initializer_list<T> init);
 
 	/* Assign operators */
-	// vector &operator=(const vector &other);
-	// vector &operator=(vector &&other);
-	// vector &operator=(std::initializer_list<T> ilist);
+	vector &operator=(const vector &other);
+	vector &operator=(vector &&other);
+	vector &operator=(std::initializer_list<T> ilist);
 
 	/* Assign methods */
-	// void assign(size_type count, const T &value);
-	// template <typename InputIt>
-	// void assign(InputIt first, typename
-	// std::enable_if<detail::is_input_iterator<InputIt>::value &&
-	// std::is_constructible<value_type, typename
-	// std::iterator_traits<InputIt>::reference>::value, InputIt>::type
-	// last); void assign(std::initializer_list<T> ilist);
+	void assign(size_type count, const T &value);
+	template <typename InputIt,
+		  typename std::enable_if<
+			  detail::is_input_iterator<InputIt>::value &&
+				  std::is_constructible<
+					  value_type,
+					  typename std::iterator_traits<
+						  InputIt>::reference>::value,
+			  InputIt>::type * = nullptr>
+	void assign(InputIt first, InputIt last);
+	void assign(std::initializer_list<T> ilist);
 
 	/* Destructor */
 	~vector();
@@ -427,6 +431,196 @@ template <typename T>
 vector<T>::vector(std::initializer_list<T> init)
     : vector(init.begin(), init.end())
 {
+}
+
+/**
+ * Copy assignment operator. Replaces the contents with a copy of the contents
+ * of other.
+ *
+ * @throw pmem::transaction_alloc_error when allocating new memory failed.
+ * @throw pmem::transaction_free_error when freeing old underlying array failed.
+ * @throw rethrows constructor exception.
+ *
+ * @pre pmemobj_tx_stage() == TX_STAGE_WORK
+ *
+ * @post _size = other._size
+ * @post _capacity = max(next_pow_2(_size), other._capacity)
+ */
+template <typename T>
+vector<T> &
+vector<T>::operator=(const vector &other)
+{
+	assert(pmemobj_tx_stage() != TX_STAGE_WORK);
+	if (this != &other)
+		assign(other.begin(), other.end());
+	return *this;
+}
+
+/**
+ * Move assignment operator. Replaces the contents with those of other using
+ * move semantics (i.e. the data in other is moved from other into this
+ * container). other is in a valid but empty state afterwards.
+ *
+ * @throw pmem::transaction_free_error when freeing underlying array failed.
+ *
+ * @pre pmemobj_tx_stage() == TX_STAGE_WORK
+ *
+ * @post _size = other._size
+ * @post _capacity = other._capacity
+ */
+template <typename T>
+vector<T> &
+vector<T>::operator=(vector &&other)
+{
+	assert(pmemobj_tx_stage() != TX_STAGE_WORK);
+	if (this == &other)
+		return *this;
+
+	_dealloc();
+	_data = other._data;
+	_capacity = other._capacity;
+	_size = other._size;
+	other._data = nullptr;
+	other._capacity = other._size = 0;
+
+	return *this;
+}
+
+/**
+ * Replaces the contents with those identified by initializer list ilist.
+ *
+ * @pre pmemobj_tx_stage() == TX_STAGE_WORK
+ *
+ * @throw std::length_error if ilist.size() > max_size().
+ * @throw pmem::transaction_alloc_error when allocating new memory failed.
+ * @throw pmem::transaction_free_error when freeing old underlying array failed.
+ * @throw rethrows constructor exception.
+ */
+template <typename T>
+vector<T> &
+vector<T>::operator=(std::initializer_list<T> ilist)
+{
+	assert(pmemobj_tx_stage() != TX_STAGE_WORK);
+	assign(ilist.begin(), ilist.end());
+	return *this;
+}
+
+/**
+ * Replaces the contents with count copies of value value. All iterators,
+ * pointers and references to the elements of the container are invalidated. The
+ * past-the-end iterator is also invalidated.
+ *
+ * @param[in] count number of elements to construct.
+ * @param[in] value value of all constructed elements.
+ *
+ * @throw std::length_error if detail::next_pow_2(count) > max_size().
+ * @throw pmem::transaction_alloc_error when allocating new memory failed.
+ * @throw pmem::transaction_free_error when freeing old underlying array failed.
+ * @throw rethrows constructor exception.
+ *
+ * @post _size = count
+ * @post _capacity = max(next_pow_2(_size), _capacity)
+ */
+template <typename T>
+void
+vector<T>::assign(size_type count, const_reference value)
+{
+	auto pop = pmemobj_pool_by_ptr(this);
+	assert(pop != nullptr);
+	pool_base pb = pool_base(pop);
+	transaction::run(pb, [&] {
+		if (count <= capacity()) {
+			std::fill_n(
+				begin(),
+				std::min(count, static_cast<size_type>(_size)),
+				value);
+			if (count > _size)
+				_grow(count - _size, value);
+			else
+				_shrink(count);
+		} else {
+			_dealloc();
+			_alloc(detail::next_pow_2(count));
+			_grow(count, value);
+		}
+	});
+}
+
+/**
+ * Replaces the contents with copies of those in the range [first, last). This
+ * overload only participates in overload resolution if InputIt satisfies
+ * InputIterator. All iterators, pointers and references to the elements of the
+ * container are invalidated. The past-the-end iterator is also invalidated.
+ *
+ * @param[in] first first iterator.
+ * @param[in] last last iterator.
+ *
+ * @throw std::length_error if std::distance(first, last) > max_size().
+ * @throw pmem::transaction_alloc_error when allocating new memory failed.
+ * @throw pmem::transaction_free_error when freeing old underlying array failed.
+ * @throw rethrows constructor exception.
+ *
+ * @post _size = std::distance(first, last)
+ * @post _capacity = max(next_pow_2(_size), _capacity)
+ */
+template <typename T>
+template <typename InputIt,
+	  typename std::enable_if<
+		  detail::is_input_iterator<InputIt>::value &&
+			  std::is_constructible<
+				  T,
+				  typename std::iterator_traits<
+					  InputIt>::reference>::value,
+		  InputIt>::type *>
+void
+vector<T>::assign(InputIt first, InputIt last)
+{
+	auto pop = pmemobj_pool_by_ptr(this);
+	assert(pop != nullptr);
+	size_type size_new = static_cast<size_type>(std::distance(first, last));
+	pool_base pb = pool_base(pop);
+	transaction::run(pb, [&] {
+		if (size_new <= capacity()) {
+			InputIt mid = last;
+			bool growing = false;
+			if (size_new > _size) {
+				growing = true;
+				mid = first;
+				std::advance(mid, _size);
+			}
+			pointer m = std::copy(first, mid, begin());
+			if (growing)
+				_grow(mid, last);
+			else
+				_shrink(m);
+		} else {
+			_dealloc();
+			_alloc(detail::next_pow_2(size_new));
+			_grow(first, last);
+		}
+	});
+}
+
+/**
+ * Replaces the contents with the elements from the initializer list ilist. All
+ * iterators, pointers and references to the elements of the container are
+ * invalidated. The past-the-end iterator is also invalidated.
+ *
+ * @param[in] ilist initializer list with content to be constructed.
+ *
+ * @throw std::length_error if std::distance(first, last) > max_size().
+ * @throw pmem::transaction_alloc_error when allocating new memory failed.
+ * @throw pmem::transaction_free_error when freeing old underlying array failed.
+ * @throw rethrows constructor exception.
+ *
+ * @post _size = std::distance(ilist.begin(), ilist.end())
+ * @post _capacity = max(next_pow_2(_size), _capacity)
+ */
+template <typename T>
+void
+vector<T>::assign(std::initializer_list<T> ilist)
+{
+	assign(ilist.begin(), ilist.end());
 }
 
 /**
