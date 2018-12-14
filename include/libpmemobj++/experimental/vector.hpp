@@ -634,13 +634,16 @@ vector<T>::_alloc(size_type capacity_new)
 
 	if (capacity_new == 0)
 		return;
+	
+	_data = pmemobj_tx_alloc(sizeof(value_type) * capacity_new, detail::type_num<value_type>());
+	_size = 0;
 
-	_data = pmemobj_tx_alloc(sizeof(value_type) * capacity_new,
-				 detail::type_num<value_type>());
+	//pmem::obj::persistent_ptr<T[]> ret = pmemobj_tx_alloc(sizeof(value_type) * capacity_new, detail::type_num<value_type>());
 
 	if (_data == nullptr)
 		throw transaction_alloc_error(
 			"Failed to allocate persistent memory object");
+	//_data = ret;
 }
 
 /**
