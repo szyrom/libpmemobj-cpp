@@ -94,10 +94,12 @@ basic_test_cases(nvobj::pool<struct root> &pop)
  * Test pmem::obj::experimental::vector range constructor
  *
  * Constructs container with elements within [first, last) range pointed by
- * iterators TEST_1 - Checks if elements are emplace-constructed from given
- * range, in the same order TEST_2 - additionaly to TEST_1 checks if elements
- * within [first, last) range are not moved if iterator does not meet forward
- * iterator requirements
+ * iterators
+ * TEST_1 - Checks if elements are emplace-constructed from given range, in the
+ * same order
+ *
+ * TEST_2 - additionaly to TEST_1 checks if elements within [first, last) range
+ * are not moved if iterator does not meet forward iterator requirements
  */
 static void
 emplaceable_concept_tests(nvobj::pool<struct root> &pop)
@@ -109,107 +111,97 @@ emplaceable_concept_tests(nvobj::pool<struct root> &pop)
 	/* TEST_1 */
 	{
 		using It = test_support::forward_it<int>;
-		{
-			/* construct */
-			try {
-				nvobj::transaction::run(pop, [&] {
-					r->test2 = nvobj::make_persistent<
-						vector_type2>(
-						It(arr1), It(std::end(arr1)));
-				});
-			} catch (std::exception &e) {
-				UT_ASSERTexc(0, e);
-			}
-			/* validate */
-			try {
-				nvobj::transaction::run(pop, [&] {
-					UT_ASSERTeq((*r->test2)[0].value, 42);
-
-					nvobj::delete_persistent<vector_type2>(
-						r->test2);
-				});
-			} catch (std::exception &e) {
-				UT_ASSERTexc(0, e);
-			}
+		/* construct */
+		try {
+			nvobj::transaction::run(pop, [&] {
+				r->test2 = nvobj::make_persistent<vector_type2>(
+					It(arr1), It(std::end(arr1)));
+			});
+		} catch (std::exception &e) {
+			UT_ASSERTexc(0, e);
 		}
-		{
-			/* construct */
-			try {
-				nvobj::transaction::run(pop, [&] {
-					r->test2 = nvobj::make_persistent<
-						vector_type2>(
-						It(arr2), It(std::end(arr2)));
-				});
-			} catch (std::exception &e) {
-				UT_ASSERTexc(0, e);
-			}
-			/* validate */
-			try {
-				nvobj::transaction::run(pop, [&] {
-					UT_ASSERTeq((*r->test2)[0].value, 1);
-					UT_ASSERTeq((*r->test2)[1].value, 101);
-					UT_ASSERTeq((*r->test2)[2].value, 42);
+		/* validate */
+		try {
+			nvobj::transaction::run(pop, [&] {
+				UT_ASSERTeq((*r->test2)[0].value, 42);
 
-					nvobj::delete_persistent<vector_type2>(
-						r->test2);
-				});
-			} catch (std::exception &e) {
-				UT_ASSERTexc(0, e);
-			}
+				nvobj::delete_persistent<vector_type2>(
+					r->test2);
+			});
+		} catch (std::exception &e) {
+			UT_ASSERTexc(0, e);
+		}
+
+		/* construct */
+		try {
+			nvobj::transaction::run(pop, [&] {
+				r->test2 = nvobj::make_persistent<vector_type2>(
+					It(arr2), It(std::end(arr2)));
+			});
+		} catch (std::exception &e) {
+			UT_ASSERTexc(0, e);
+		}
+		/* validate */
+		try {
+			nvobj::transaction::run(pop, [&] {
+				UT_ASSERTeq((*r->test2)[0].value, 1);
+				UT_ASSERTeq((*r->test2)[1].value, 101);
+				UT_ASSERTeq((*r->test2)[2].value, 42);
+
+				nvobj::delete_persistent<vector_type2>(
+					r->test2);
+			});
+		} catch (std::exception &e) {
+			UT_ASSERTexc(0, e);
 		}
 	}
 	/* TEST_2 */
 	{
 		using It = test_support::input_it<int>;
-		{
-			/* construct */
-			try {
-				nvobj::transaction::run(pop, [&] {
-					r->test3 = nvobj::make_persistent<
-						vector_type3>(
-						It(arr1), It(std::end(arr1)));
-				});
-			} catch (std::exception &e) {
-				UT_ASSERTexc(0, e);
-			}
-			/* validate */
-			try {
-				nvobj::transaction::run(pop, [&] {
-					UT_ASSERTeq((*r->test3)[0].value, 42);
-					UT_ASSERTeq((*r->test3)[0].moved, 0);
-
-					nvobj::delete_persistent<vector_type3>(
-						r->test3);
-				});
-			} catch (std::exception &e) {
-				UT_ASSERTexc(0, e);
-			}
+		/* construct */
+		try {
+			nvobj::transaction::run(pop, [&] {
+				r->test3 = nvobj::make_persistent<vector_type3>(
+					It(arr1), It(std::end(arr1)));
+			});
+		} catch (std::exception &e) {
+			UT_ASSERTexc(0, e);
 		}
-		{
-			/* construct */
-			try {
-				nvobj::transaction::run(pop, [&] {
-					r->test3 = nvobj::make_persistent<
-						vector_type3>(
-						It(arr2), It(std::end(arr2)));
-				});
-			} catch (std::exception &e) {
-				UT_ASSERTexc(0, e);
-			}
-			/* validate */
-			try {
-				nvobj::transaction::run(pop, [&] {
-					UT_ASSERTeq((*r->test3)[0].value, 1);
-					UT_ASSERTeq((*r->test3)[1].value, 101);
-					UT_ASSERTeq((*r->test3)[2].value, 42);
-					UT_ASSERTeq((*r->test3)[2].moved, 0);
+		/* validate */
+		try {
+			nvobj::transaction::run(pop, [&] {
+				UT_ASSERTeq((*r->test3)[0].value, 42);
+				UT_ASSERTeq((*r->test3)[0].moved, 0);
 
-					nvobj::delete_persistent<vector_type3>(
-						r->test3);
-				});
-			} catch (std::exception &e) {
-				UT_ASSERTexc(0, e);
-			}
+				nvobj::delete_persistent<vector_type3>(
+					r->test3);
+			});
+		} catch (std::exception &e) {
+			UT_ASSERTexc(0, e);
+		}
+
+		/* construct */
+		try {
+			nvobj::transaction::run(pop, [&] {
+				r->test3 = nvobj::make_persistent<vector_type3>(
+					It(arr2), It(std::end(arr2)));
+			});
+		} catch (std::exception &e) {
+			UT_ASSERTexc(0, e);
+		}
+		/* validate */
+		try {
+			nvobj::transaction::run(pop, [&] {
+				UT_ASSERTeq((*r->test3)[0].value, 1);
+				UT_ASSERTeq((*r->test3)[1].value, 101);
+				UT_ASSERTeq((*r->test3)[2].value, 42);
+				UT_ASSERTeq((*r->test3)[2].moved, 0);
+
+				nvobj::delete_persistent<vector_type3>(
+					r->test3);
+			});
+		} catch (std::exception &e) {
+			UT_ASSERTexc(0, e);
 		}
 	}
 }
