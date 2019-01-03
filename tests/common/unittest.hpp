@@ -123,10 +123,10 @@ ut_stat(const char *file, int line, const char *func, const char *path,
 
 /* assertion with exception related string printed */
 #define UT_ASSERTexc(exception)                                                \
-	(UT_EXCEPTION(exception),                                              \
-	 (UT_FATAL("%s:%d %s - assertion failure", __FILE__, __LINE__,         \
-		   __func__),                                                  \
-	  0))
+	((void)(UT_EXCEPTION(exception),                                       \
+		(UT_FATAL("%s:%d %s - assertion failure", __FILE__, __LINE__,  \
+			  __func__),                                           \
+		 0)))
 
 /* assertion with extra info printed if assertion
  * fails at runtime */
