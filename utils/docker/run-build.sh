@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright 2016-2018, Intel Corporation
+# Copyright 2016-2019, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -47,13 +47,13 @@ function cleanup() {
 function test_command() {
 	if [ "$COVERAGE" = "1" ]; then
 		if [[ "$2" == "llvm" ]]; then
-			gcovexe="llvm-cov gcov"
+			gcovexe="llvm-cov -n gcov"
 		else
 			gcovexe="gcov"
 		fi
 
 		ctest --output-on-failure -E "_memcheck|_drd|_helgrind|_pmemcheck" --timeout 540
-		bash <(curl -s https://codecov.io/bash) -c -F $1 -x "$gcovexe"
+		bash <(curl -s https://codecov.io/bash) -c -F $1 -x "$gcovexe" > /dev/null
 		cleanup
 	else
 		ctest --output-on-failure --timeout 540
