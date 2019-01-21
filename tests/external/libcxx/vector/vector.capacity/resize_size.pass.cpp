@@ -20,11 +20,9 @@
 namespace nvobj = pmem::obj;
 namespace pmem_exp = nvobj::experimental;
 
-using C = pmem_exp::vector<int>;
 using C2 = pmem_exp::vector<move_only>;
 
 struct root {
-	nvobj::persistent_ptr<C> v;
 	nvobj::persistent_ptr<C2> v2;
 };
 
@@ -44,54 +42,15 @@ main(int argc, char *argv[])
 					  PMEMOBJ_MIN_POOL, S_IWUSR | S_IRUSR);
 
 	auto r = pop.root();
-
-	{
-		try {
-			nvobj::transaction::run(pop, [&] {
-				r->v = nvobj::make_persistent<C>(100U);
-				r->v->resize(50);
-			});
-
-			UT_ASSERT(r->v->size() == 50);
-			UT_ASSERT(r->v->capacity() == 100);
-
-			nvobj::transaction::run(pop,
-						[&] { r->v->resize(200); });
-
-			UT_ASSERT(r->v->size() == 200);
-			UT_ASSERT(r->v->capacity() >= 200);
-
-			nvobj::transaction::run(pop, [&] {
-				nvobj::delete_persistent<C>(r->v);
-			});
-
-		} catch (std::exception &e) {
-			UT_FATALexc(e);
-		}
-	}
-	{
-		try {
-			nvobj::transaction::run(pop, [&] {
-				r->v2 = nvobj::make_persistent<C2>(100U);
-				r->v2->resize(50);
-			});
-
-			UT_ASSERT(r->v2->size() == 50);
-			UT_ASSERT(r->v2->capacity() == 100);
-
-			nvobj::transaction::run(pop,
-						[&] { r->v2->resize(200); });
-
-			UT_ASSERT(r->v2->size() == 200);
-			UT_ASSERT(r->v2->capacity() >= 200);
-
-			nvobj::transaction::run(pop, [&] {
-				nvobj::delete_persistent<C2>(r->v2);
-			});
-
-		} catch (std::exception &e) {
-			UT_FATALexc(e);
-		}
+	try {
+		nvobj::transaction::run(pop, [&] {
+			r->v2 = nvobj::make_persistent<C2>(100U);
+		});
+		UT_ASSERT(
+			true ==
+			pmem::detail::is_input_iterator<r->v2->begin()>::value);
+	} catch (std::exception &e) {
+		UT_FATALexc(e);
 	}
 
 	pop.close();
