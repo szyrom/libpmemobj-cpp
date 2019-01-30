@@ -26,12 +26,14 @@ struct Throws;
 
 using C = pmem_exp::vector<int>;
 using C2 = pmem_exp::vector<Throws>;
+using C3 = pmem_exp::vector<C>;
 using std::distance;
 using std::next;
 
 struct root {
 	nvobj::persistent_ptr<C> l1;
 	nvobj::persistent_ptr<C2> v;
+	nvobj::persistent_ptr<C3> outer;
 };
 
 struct Throws {
@@ -176,6 +178,27 @@ main(int argc, char *argv[])
 				UT_ASSERT(i == r->l1->begin());
 				nvobj::transaction::run(pop, [&] {
 					nvobj::delete_persistent<C>(r->l1);
+				});
+			} catch (std::exception &e) {
+				UT_FATALexc(e);
+			}
+		}
+		{
+			try {
+				nvobj::persistent_ptr<C> tmp;
+				nvobj::transaction::run(pop, [&] {
+					tmp = nvobj::make_persistent<C>(1U);
+					r->outer = nvobj::make_persistent<C3>(
+						2U, *tmp);
+				});
+				r->outer->erase(r->outer->begin(),
+						r->outer->begin());
+				UT_ASSERT(r->outer->size() == 2);
+				UT_ASSERT((*r->outer)[0].size() == 1);
+				UT_ASSERT((*r->outer)[1].size() == 1);
+				nvobj::transaction::run(pop, [&] {
+					nvobj::delete_persistent<C>(tmp);
+					nvobj::delete_persistent<C3>(r->outer);
 				});
 			} catch (std::exception &e) {
 				UT_FATALexc(e);
