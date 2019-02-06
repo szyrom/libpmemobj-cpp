@@ -65,11 +65,9 @@ main(int argc, char *argv[])
 		nvobj::transaction::run(pop, [&] {
 			r->v1 = nvobj::make_persistent<C>();
 			r->v2 = nvobj::make_persistent<C>();
-			// XXX: uncomment following line when vector's reserve()
-			// function is implemented
-			//  r->v2->reserve(10); // no reallocation during
-			//  assign.
 		});
+
+		r->v2->reserve(10); // no reallocation during assign
 
 		test<C>(pop, *r->v1);
 		test<C>(pop, *r->v2);
