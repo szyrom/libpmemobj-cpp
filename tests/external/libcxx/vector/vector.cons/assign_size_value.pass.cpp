@@ -24,6 +24,7 @@ using C = pmem_exp::vector<int>;
 struct root {
 	nvobj::persistent_ptr<C> v1;
 	nvobj::persistent_ptr<C> v2;
+	nvobj::persistent_ptr<C> v3;
 };
 
 bool
@@ -73,16 +74,19 @@ main(int argc, char *argv[])
 		nvobj::transaction::run(pop, [&] {
 			r->v1 = nvobj::make_persistent<C>();
 			r->v2 = nvobj::make_persistent<C>();
+			r->v3 = nvobj::make_persistent<C>(10U, 1);
 		});
 
 		r->v2->reserve(10); // no reallocation during assign
 
 		test<C>(pop, *r->v1);
 		test<C>(pop, *r->v2);
+		test<C>(pop, *r->v3);
 
 		nvobj::transaction::run(pop, [&] {
 			nvobj::delete_persistent<C>(r->v1);
 			nvobj::delete_persistent<C>(r->v2);
+			nvobj::delete_persistent<C>(r->v3);
 		});
 	} catch (std::exception &e) {
 		UT_FATALexc(e);
