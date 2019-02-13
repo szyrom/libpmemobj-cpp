@@ -38,15 +38,14 @@ test(nvobj::pool<struct root> &pop)
 		nvobj::transaction::run(pop, [&] {
 			r->l = nvobj::make_persistent<C>();
 			r->lo = nvobj::make_persistent<C>();
-
-			for (int i = 1; i <= 3; ++i) {
-				r->l->push_back(i);
-				r->lo->push_back(i);
-			}
-
 			r->l2 = nvobj::make_persistent<C>();
-			*r->l2 = std::move(*r->l);
 		});
+
+		for (int i = 1; i <= 3; ++i) {
+			r->l->push_back(i);
+			r->lo->push_back(i);
+		}
+		*r->l2 = std::move(*r->l);
 
 		UT_ASSERT(*r->l2 == *r->lo);
 		UT_ASSERT(r->l->empty());
