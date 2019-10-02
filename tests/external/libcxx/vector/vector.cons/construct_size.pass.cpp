@@ -30,7 +30,7 @@ struct root {
 };
 
 /**
- * Test pmem::obj::experimental::vector fill constructor
+ * Test pmem::obj::vector fill constructor
  *
  * Constructs container with n default constructed elements.
  * Validates container's size and its elements for both fundamental and user

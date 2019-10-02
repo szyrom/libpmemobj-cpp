@@ -45,10 +45,10 @@
 #include <libpmemobj++/detail/common.hpp>
 #include <libpmemobj++/detail/iterator_traits.hpp>
 #include <libpmemobj++/detail/life.hpp>
-#include <libpmemobj++/experimental/array.hpp>
-#include <libpmemobj++/experimental/contiguous_iterator.hpp>
-#include <libpmemobj++/experimental/slice.hpp>
-#include <libpmemobj++/experimental/vector.hpp>
+#include <libpmemobj++/containers/array.hpp>
+#include <libpmemobj++/contiguous_iterator.hpp>
+#include <libpmemobj++/slice.hpp>
+#include <libpmemobj++/containers/vector.hpp>
 #include <libpmemobj++/persistent_ptr.hpp>
 #include <libpmemobj++/pext.hpp>
 #include <libpmemobj++/transaction.hpp>
@@ -59,11 +59,8 @@ namespace pmem
 namespace obj
 {
 
-namespace experimental
-{
-
 /**
- * pmem::obj::experimental::string - EXPERIMENTAL persistent container
+ * pmem::obj::string - EXPERIMENTAL persistent container
  * with std::basic_string compatible interface.
  *
  * The implementation is NOT complete.
@@ -4049,8 +4046,6 @@ operator>=(const basic_string<CharT, Traits> &lhs,
 {
 	return lhs.compare(rhs) >= 0;
 }
-
-} /* namespace experimental */
 
 } /* namespace obj */
 

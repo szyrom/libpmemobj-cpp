@@ -66,7 +66,7 @@ basic_test(nvobj::pool<struct root> &pop, Iterator first, Iterator last)
 }
 
 /**
- * Test pmem::obj::experimental::vector range constructor
+ * Test pmem::obj::vector range constructor
  *
  * Constructs container with elements within [first, last) range pointed by
  * iterators of following categories: Input, Forward, Bidirectional, Random
@@ -91,7 +91,7 @@ basic_test_cases(nvobj::pool<struct root> &pop)
 }
 
 /**
- * Test pmem::obj::experimental::vector range constructor
+ * Test pmem::obj::vector range constructor
  *
  * Constructs container with elements within [first, last) range pointed by
  * iterators

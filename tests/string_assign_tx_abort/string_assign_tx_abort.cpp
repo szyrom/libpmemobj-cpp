@@ -78,7 +78,7 @@ assert_tx_abort(pmem::obj::pool<struct root> &pop, std::function<void(void)> f)
 }
 
 /**
- * Test pmem::obj::experimental::string assign() methods and operator=.
+ * Test pmem::obj::string assign() methods and operator=.
  *
  * Checks if string's state is reverted when transaction aborts.
  */

@@ -55,12 +55,12 @@
 template <typename Value, std::size_t N>
 class simple_kv {
 private:
-	using key_type = pmem::obj::experimental::string;
-	using bucket_type = pmem::obj::experimental::vector<
+	using key_type = pmem::obj::string;
+	using bucket_type = pmem::obj::vector<
 		std::pair<key_type, std::size_t>>;
 	using bucket_array_type =
-		pmem::obj::experimental::array<bucket_type, N>;
-	using value_vector = pmem::obj::experimental::vector<Value>;
+		pmem::obj::array<bucket_type, N>;
+	using value_vector = pmem::obj::vector<Value>;
 
 	bucket_array_type buckets;
 	value_vector values;

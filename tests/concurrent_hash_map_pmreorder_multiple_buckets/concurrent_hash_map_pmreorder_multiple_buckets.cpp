@@ -62,7 +62,7 @@ struct identity_hash {
 	}
 };
 
-typedef nvobj::experimental::concurrent_hash_map<nvobj::p<int>, nvobj::p<int>,
+typedef nvobj::concurrent_hash_map<nvobj::p<int>, nvobj::p<int>,
 						 identity_hash>
 	persistent_map_type;
 
